@@ -281,7 +281,7 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 Para suporte técnico ou dúvidas sobre o projeto:
 
-- **Email**: suporte@lauramantovani.com.br
+- **Email**: jorgenetom22@gmail.com
 - **WhatsApp**: (11) 99876-5432
 
 ---
