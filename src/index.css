@@ -1,9 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* Font Display Optimization */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 /* Base Styles */
 html {
@@ -20,7 +21,7 @@ body {
 .dark {
   --tw-bg-opacity: 1;
   background-color: rgb(17 24 39 / var(--tw-bg-opacity));
-  color: rgb(243 244 246 / var(--tw-text-opacity));
+  color: rgb(243 244 246 / 1);
 }
 
 .dark h1,
