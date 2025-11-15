@@ -1,5 +1,5 @@
-@type {import('tailwindcss').Config}
-export default {
+/** @type {import('tailwindcss').Config} */
+module.exports = {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   darkMode: 'class',
   theme: {
@@ -38,11 +38,11 @@ export default {
         },
       },
       screens: {
-        'xs': '475px',
+        xs: '475px',
       },
       spacing: {
-        '18': '4.5rem',
-        '88': '22rem',
+        18: '4.5rem',
+        88: '22rem',
       },
       aspectRatio: {
         '4/3': '4 / 3',
