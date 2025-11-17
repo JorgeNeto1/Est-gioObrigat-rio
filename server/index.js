@@ -18,7 +18,7 @@ const app = express();
 const PORT = parseInt(process.env.PORT) || 3001;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/psiagenda';
 
-console.log(`🔧 Configuration loaded:`);
+console.log('🔧 Configuration loaded:');
 console.log(`   - Port: ${PORT}`);
 console.log(`   - MongoDB URI: ${MONGO_URI}`);
 
@@ -30,84 +30,90 @@ app.use(express.json());
 const connectDB = async () => {
   try {
     await mongoose.connect(MONGO_URI);
-    console.log('✅ MongoDB connected successfully');
+    console.log('MongoDB connected successfully');
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error.message);
+    console.error('MongoDB connection error:', error.message);
     process.exit(1);
   }
 };
 
 // Appointment Schema
-const appointmentSchema = new mongoose.Schema({
-  patientId: {
-    type: String,
-    required: true
+const appointmentSchema = new mongoose.Schema(
+  {
+    patientId: {
+      type: String,
+      required: true,
+    },
+    patientName: {
+      type: String,
+      required: true,
+    },
+    patientEmail: {
+      type: String,
+      required: true,
+    },
+    patientPhone: {
+      type: String,
+      default: '',
+    },
+    date: {
+      type: String,
+      required: true,
+    },
+    time: {
+      type: String,
+      required: true,
+    },
+    type: {
+      type: String,
+      enum: ['Primeira Consulta', 'Sessão Regular', 'Terapia de Casal', 'Retorno'],
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ['scheduled', 'confirmed', 'cancelled', 'completed'],
+      default: 'scheduled',
+    },
+    notes: {
+      type: String,
+      default: '',
+    },
   },
-  patientName: {
-    type: String,
-    required: true
+  {
+    timestamps: true,
   },
-  patientEmail: {
-    type: String,
-    required: true
-  },
-  patientPhone: {
-    type: String,
-    default: ''
-  },
-  date: {
-    type: String,
-    required: true
-  },
-  time: {
-    type: String,
-    required: true
-  },
-  type: {
-    type: String,
-    enum: ['Primeira Consulta', 'Sessão Regular', 'Terapia de Casal', 'Retorno'],
-    required: true
-  },
-  status: {
-    type: String,
-    enum: ['scheduled', 'confirmed', 'cancelled', 'completed'],
-    default: 'scheduled'
-  },
-  notes: {
-    type: String,
-    default: ''
-  }
-}, {
-  timestamps: true
-});
+);
 
 // User Schema
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    phone: {
+      type: String,
+      default: '',
+    },
+    role: {
+      type: String,
+      enum: ['patient', 'psychologist'],
+      default: 'patient',
+    },
+    password: {
+      type: String,
+      required: true,
+    },
   },
-  email: {
-    type: String,
-    required: true,
-    unique: true
+  {
+    timestamps: true,
   },
-  phone: {
-    type: String,
-    default: ''
-  },
-  role: {
-    type: String,
-    enum: ['patient', 'psychologist'],
-    default: 'patient'
-  },
-  password: {
-    type: String,
-    required: true
-  }
-}, {
-  timestamps: true
-});
+);
 
 // Models
 const Appointment = mongoose.model('Appointment', appointmentSchema);
@@ -117,11 +123,11 @@ const User = mongoose.model('User', userSchema);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'PsiAgenda API is running',
     timestamp: new Date().toISOString(),
-    port: PORT
+    port: PORT,
   });
 });
 
@@ -131,8 +137,8 @@ app.get('/api/health', (req, res) => {
 app.get('/api/appointments', async (req, res) => {
   try {
     const { patientId, status, date } = req.query;
-    
-    let filter = {};
+
+    const filter = {};
     if (patientId) filter.patientId = patientId;
     if (status) filter.status = status;
     if (date) filter.date = date;
@@ -160,13 +166,22 @@ app.get('/api/appointments/:id', async (req, res) => {
 // POST create new appointment
 app.post('/api/appointments', async (req, res) => {
   try {
-    const { patientId, patientName, patientEmail, patientPhone, date, time, type, notes } = req.body;
+    const {
+      patientId,
+      patientName,
+      patientEmail,
+      patientPhone,
+      date,
+      time,
+      type,
+      notes,
+    } = req.body;
 
     // Check if slot is already taken
-    const existingAppointment = await Appointment.findOne({ 
-      date, 
-      time, 
-      status: { $ne: 'cancelled' } 
+    const existingAppointment = await Appointment.findOne({
+      date,
+      time,
+      status: { $ne: 'cancelled' },
     });
 
     if (existingAppointment) {
@@ -181,7 +196,7 @@ app.post('/api/appointments', async (req, res) => {
       date,
       time,
       type,
-      notes
+      notes,
     });
 
     const savedAppointment = await appointment.save();
@@ -194,15 +209,15 @@ app.post('/api/appointments', async (req, res) => {
 // PATCH update appointment
 app.patch('/api/appointments/:id', async (req, res) => {
   try {
-    const { date, time, status } = req.body;
+    const { date, time } = req.body;
 
     // If updating date/time, check availability
     if (date && time) {
-      const existingAppointment = await Appointment.findOne({ 
+      const existingAppointment = await Appointment.findOne({
         _id: { $ne: req.params.id },
-        date, 
-        time, 
-        status: { $ne: 'cancelled' } 
+        date,
+        time,
+        status: { $ne: 'cancelled' },
       });
 
       if (existingAppointment) {
@@ -210,11 +225,10 @@ app.patch('/api/appointments/:id', async (req, res) => {
       }
     }
 
-    const appointment = await Appointment.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const appointment = await Appointment.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!appointment) {
       return res.status(404).json({ error: 'Appointment not found' });
@@ -241,11 +255,11 @@ app.delete('/api/appointments/:id', async (req, res) => {
 
 // User Routes
 
-// GET all users (patients only for privacy)
+// GET all users
 app.get('/api/users', async (req, res) => {
   try {
     const { role } = req.query;
-    let filter = {};
+    const filter = {};
     if (role) filter.role = role;
 
     const users = await User.find(filter).select('-password').sort({ createdAt: -1 });
@@ -284,15 +298,15 @@ app.post('/api/users', async (req, res) => {
       email,
       phone,
       role,
-      password // In production, hash this password!
+      password, // Em produção, fazer hash dessa senha
     });
 
     const savedUser = await user.save();
-    
+
     // Remove password from response
     const userResponse = savedUser.toObject();
     delete userResponse.password;
-    
+
     res.status(201).json(userResponse);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -303,24 +317,23 @@ app.post('/api/users', async (req, res) => {
 app.patch('/api/users/:id', async (req, res) => {
   try {
     const { password, ...updateData } = req.body;
-    
+
     // If updating email, check if it's already taken
     if (updateData.email) {
-      const existingUser = await User.findOne({ 
+      const existingUser = await User.findOne({
         email: updateData.email,
-        _id: { $ne: req.params.id }
+        _id: { $ne: req.params.id },
       });
-      
+
       if (existingUser) {
         return res.status(400).json({ error: 'Email is already taken' });
       }
     }
 
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    ).select('-password');
+    const user = await User.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true,
+    }).select('-password');
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -345,25 +358,51 @@ app.delete('/api/users/:id', async (req, res) => {
   }
 });
 
+// 👉 AUTH ROUTE (LOGIN)
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email e senha são obrigatórios' });
+    }
+
+    // Aqui ainda é senha em texto puro (para faculdade). Em produção, usar hash.
+    const user = await User.findOne({ email, password });
+
+    if (!user) {
+      return res.status(401).json({ error: 'Email ou senha inválidos' });
+    }
+
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    res.json(userResponse);
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Erro interno no servidor' });
+  }
+});
+
 // Available time slots endpoint
 app.get('/api/appointments/available-slots/:date', async (req, res) => {
   try {
     const { date } = req.params;
     const timeSlots = ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'];
-    
+
     // Get booked appointments for the date
-    const bookedAppointments = await Appointment.find({ 
-      date, 
-      status: { $ne: 'cancelled' } 
+    const bookedAppointments = await Appointment.find({
+      date,
+      status: { $ne: 'cancelled' },
     });
-    
-    const bookedTimes = bookedAppointments.map(apt => apt.time);
-    
-    const availableSlots = timeSlots.map(time => ({
+
+    const bookedTimes = bookedAppointments.map((apt) => apt.time);
+
+    const availableSlots = timeSlots.map((time) => ({
       time,
-      available: !bookedTimes.includes(time)
+      available: !bookedTimes.includes(time),
     }));
-    
+
     res.json(availableSlots);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -384,15 +423,15 @@ app.use('*', (req, res) => {
 // Function to find an available port
 const findAvailablePort = async (startPort) => {
   const net = await import('net');
-  
+
   return new Promise((resolve, reject) => {
     const server = net.createServer();
-    
+
     server.listen(startPort, () => {
       const port = server.address().port;
       server.close(() => resolve(port));
     });
-    
+
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
         // Try next port
@@ -408,20 +447,23 @@ const findAvailablePort = async (startPort) => {
 const startServer = async () => {
   try {
     await connectDB();
-    
+
     let serverPort = PORT;
-    
+
     try {
       // Try to use the configured port first
       await new Promise((resolve, reject) => {
         const server = app.listen(serverPort, () => {
           console.log(`🚀 Server running on port ${serverPort}`);
           console.log(`📱 API Health Check: http://localhost:${serverPort}/api/health`);
-          console.log(`📋 Appointments API: http://localhost:${serverPort}/api/appointments`);
+          console.log(
+            `📋 Appointments API: http://localhost:${serverPort}/api/appointments`,
+          );
           console.log(`👥 Users API: http://localhost:${serverPort}/api/users`);
+          console.log(`🔐 Auth API: http://localhost:${serverPort}/api/auth/login`);
           resolve(server);
         });
-        
+
         server.on('error', (err) => {
           if (err.code === 'EADDRINUSE') {
             reject(new Error(`Port ${serverPort} is busy`));
@@ -433,32 +475,38 @@ const startServer = async () => {
     } catch (error) {
       if (error.message.includes('is busy')) {
         console.log(`⚠️  Port ${serverPort} is busy, finding available port...`);
-        
+
         // Find an available port
         serverPort = await findAvailablePort(serverPort + 1);
-        
+
         app.listen(serverPort, () => {
           console.log(`🚀 Server running on port ${serverPort}`);
-          console.log(`⚠️  Note: Using port ${serverPort} instead of ${PORT} (original port was busy)`);
+          console.log(
+            `⚠️  Note: Using port ${serverPort} instead of ${PORT} (original port was busy)`,
+          );
           console.log(`📱 API Health Check: http://localhost:${serverPort}/api/health`);
-          console.log(`📋 Appointments API: http://localhost:${serverPort}/api/appointments`);
+          console.log(
+            `📋 Appointments API: http://localhost:${serverPort}/api/appointments`,
+          );
           console.log(`👥 Users API: http://localhost:${serverPort}/api/users`);
+          console.log(`🔐 Auth API: http://localhost:${serverPort}/api/auth/login`);
         });
       } else {
         throw error;
       }
     }
-    
   } catch (error) {
     console.error('❌ Failed to start server:', error.message);
-    
+
     if (error.message.includes('EADDRINUSE')) {
       console.log('💡 Troubleshooting tips:');
       console.log('   1. Stop other services running on this port');
       console.log('   2. Change the PORT in server/.env file');
-      console.log('   3. Kill processes: netstat -ano | findstr :5000 (Windows) or lsof -ti:5000 | xargs kill (Mac/Linux)');
+      console.log(
+        '   3. Kill processes: netstat -ano | findstr :5000 (Windows) or lsof -ti:5000 | xargs kill (Mac/Linux)',
+      );
     }
-    
+
     process.exit(1);
   }
 };

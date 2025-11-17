@@ -1,119 +1,132 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, AuthContextType, RegisterData } from '../types/auth';
+import React, { createContext, useContext, useState } from 'react';
+
+type RegisterFormData = {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword?: string;
+};
+
+type User = {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: 'psychologist' | 'patient';
+};
+
+type AuthContextType = {
+  user: User | null;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (data: RegisterFormData) => Promise<boolean>;
+  logout: () => void;
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+const AUTH_STORAGE_KEY = 'psiagenda:auth';
+// 👇 usa a porta 5001 do servidor
+const API_URL = 'http://localhost:5001';
 
-interface AuthProviderProps {
-  children: ReactNode;
+function saveAuthUser(user: User | null) {
+  if (typeof window === 'undefined') return;
+  if (user) {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+function loadAuthUser(): User | null {
+  if (typeof window === 'undefined') return null;
+  const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored) as User;
+  } catch {
+    return null;
+  }
+}
 
-  // Simulate API calls with localStorage
-  useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setIsLoading(false);
-  }, []);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(() => loadAuthUser());
+  const [isLoading, setIsLoading] = useState(false);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check for psychologist account
-    if (email === 'laura@lauramantovani.com.br' && password === 'admin123') {
-      const psychologistUser: User = {
-        id: 'psychologist-1',
-        name: 'Laura Mantovani Mira',
-        email: 'laura@lauramantovani.com.br',
-        role: 'psychologist',
-        createdAt: new Date()
-      };
-      setUser(psychologistUser);
-      localStorage.setItem('user', JSON.stringify(psychologistUser));
-      setIsLoading(false);
+    try {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const loggedUser = (await response.json()) as User;
+      setUser(loggedUser);
+      saveAuthUser(loggedUser);
       return true;
-    }
-    
-    // Check for existing patients
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const foundUser = users.find((u: User) => u.email === email);
-    
-    if (foundUser) {
-      // In a real app, you'd verify the password hash
-      setUser(foundUser);
-      localStorage.setItem('user', JSON.stringify(foundUser));
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    } finally {
       setIsLoading(false);
-      return true;
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
-  const register = async (userData: RegisterData): Promise<boolean> => {
+  const register = async (data: RegisterFormData): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    
-    // Check if user already exists
-    if (users.find((u: User) => u.email === userData.email)) {
-      setIsLoading(false);
+    try {
+      const response = await fetch(`${API_URL}/api/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          password: data.password,
+          role: 'patient',
+        }),
+      });
+
+      if (!response.ok) {
+        // 400 aqui geralmente = email já existe
+        return false;
+      }
+
+      const newUser = (await response.json()) as User;
+      setUser(newUser);
+      saveAuthUser(newUser);
+      return true;
+    } catch (error) {
+      console.error('Register error:', error);
       return false;
+    } finally {
+      setIsLoading(false);
     }
-    
-    const newUser: User = {
-      id: `patient-${Date.now()}`,
-      name: userData.name,
-      email: userData.email,
-      phone: userData.phone,
-      role: 'patient',
-      createdAt: new Date()
-    };
-    
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
-    
-    setUser(newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
-    
-    setIsLoading(false);
-    return true;
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('user');
-  };
-
-  const value = {
-    user,
-    login,
-    register,
-    logout,
-    isLoading
+    saveAuthUser(null);
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const useAuth = (): AuthContextType => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return ctx;
 };
